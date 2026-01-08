@@ -4,6 +4,7 @@
 (use-modules (wayland client display)
              (oop goops)
              (ice-9 format)
+             (srfi srfi-9)
              (system foreign-library)
              ((system foreign) #:prefix ffi:)
              (rnrs bytevectors)
@@ -11,9 +12,6 @@
              (wayland client proxy)
              (wayland client protocol wayland)
              (wayland client protocol xdg-shell))
-
-;; no idea. if use bytevector-*-set!, and some time will segment fault.
-(gc-disable)
 
 (define compositor (make-parameter #f))
 (define shm (make-parameter #f))
@@ -40,24 +38,33 @@
     (lambda (name flags)
       (% (ffi:string->pointer name) flags))))
 
+(define-record-type <mmap>
+  (%make-mmap pointer bytevector)
+  mmap?
+  (pointer mmap-pointer)
+  (bytevector mmap-bytevector))
+
 (define mmap
   (let ((% (foreign-library-function
             #f  "mmap"
             #:return-type '*
             #:arg-types `(* ,ffi:size_t ,ffi:int ,ffi:int ,ffi:int ,ffi:long))))
     (lambda (address length prot flags fd offset)
-      (ffi:pointer->bytevector
-       (% (or address ffi:%null-pointer) length prot flags fd offset)
-       length))))
+      (let ((p (% (or address ffi:%null-pointer) length prot flags fd offset)))
+        (%make-mmap
+         p
+         (ffi:pointer->bytevector
+          (% (or address ffi:%null-pointer) length prot flags fd offset)
+          length))))))
 
 (define munmap
   (let ((% (foreign-library-function
             #f  "munmap"
             #:return-type ffi:int
             #:arg-types `(* ,ffi:size_t))))
-    (lambda* (address)
-      (%  (ffi:bytevector->pointer address)
-          (bytevector-length address)))))
+    (lambda* (mm)
+      (% (mmap-pointer mm)
+         (bytevector-length (mmap-bytevector mm))))))
 
 (define (draw-frame shm)
   (let* ((width (width*))
@@ -66,18 +73,20 @@
          (size (* stride height))
          (fd (memfd-create "guile-wayland-client-3" 1))
          (_ (truncate-file fd size))
-         (data (mmap #f size (logior PROT_READ PROT_WRITE) MAP_SHARED fd 0))
+         (mm (mmap #f size (logior PROT_READ PROT_WRITE) MAP_SHARED fd 0))
+         (data (mmap-bytevector mm))
          (pool (wl-shm-create-pool shm fd size))
          (buffer (wl-shm-pool-create-buffer
                   pool 0
                   width height stride
                   WL_SHM_FORMAT_ARGB8888)))
+
     (wl-shm-pool-destroy pool)
     (close-fdes fd)
     (for-each (lambda (x)
                 (bytevector-u32-native-set! data x #x88ff0000))
               (iota (* width height) 0 4))
-    (munmap data)
+    (munmap mm)
     (wl-buffer-add-listener buffer wl-buffer-listener)
     buffer))
 
