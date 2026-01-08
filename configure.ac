@@ -18,10 +18,6 @@ AC_CONFIG_FILES([Makefile
                  modules/wayland/config.scm
                  libguile-wayland/Makefile])
 AC_CONFIG_FILES([pre-inst-env], [chmod +x pre-inst-env])
-AC_CONFIG_FILES([example/wl-client-1.scm], [chmod +x example/wl-client-1.scm])
-AC_CONFIG_FILES([example/wl-client-2.scm], [chmod +x example/wl-client-2.scm])
-AC_CONFIG_FILES([example/wl-client-3.scm], [chmod +x example/wl-client-3.scm])
-AC_CONFIG_FILES([example/wl-server-1.scm], [chmod +x example/wl-server-1.scm])
 
 AC_USE_SYSTEM_EXTENSIONS
 # Checks for programs.
