@@ -44,15 +44,15 @@
                  (lambda _
                    (delete-file "guix.scm")
                    (substitute* (find-files "." "\\.scm")
-                     (("\\(load-extension \"libguile_wayland\" *\"(.*)\"\\)" _ o)
+                     (("\\(load-extension \"libguile-wayland\" *\"(.*)\"\\)" _ o)
                       (string-append
                        (object->string
                         `(or (false-if-exception
-                              (load-extension "libguile_wayland" ,o))
+                              (load-extension "libguile-wayland" ,o))
                              (load-extension
                               ,(string-append
                                 #$output
-                                "/lib/libguile_wayland.so")
+                                "/lib/libguile-wayland.so")
                               ,o)))))))))))
     (native-inputs
      (list autoconf
