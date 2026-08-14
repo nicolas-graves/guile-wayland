@@ -363,19 +363,22 @@
                  bs wrap unwrap check (slot-name #:init-keyword keyword) ...)
                (export bs wrap unwrap check cname)
                (define-method (initialize (obj cname) initargs)
-                 (next-method
-                  obj (append (list keyword
-                                    (let ((proc (get-keyword keyword initargs #f)))
-                                      (cond ((ffi:pointer? proc) proc)
-                                            ((procedure? proc)
-                                             (ffi:procedure->pointer
-                                              ffi:void
-                                              (lambda lambda-args
-                                                (proc call-args ...))
-                                              (list '* '* ffi-descs ...)))
-                                            ((->bool proc) (throw 'wayland-init-fail keyword proc))
-                                            (else ffi:%null-pointer)))) ...
-                                            initargs)))))))
+                 (let* ((slot-name
+                         (let ((proc (get-keyword keyword initargs #f)))
+                           (cond ((ffi:pointer? proc) proc)
+                                 ((procedure? proc)
+                                  (ffi:procedure->pointer
+                                   ffi:void
+                                   (lambda lambda-args
+                                     (proc call-args ...))
+                                   (list '* '* ffi-descs ...)))
+                                 ((->bool proc) (throw 'wayland-init-fail keyword proc))
+                                 (else ffi:%null-pointer))))
+                        ...)
+                   (next-method obj (append (list keyword slot-name) ... initargs))
+                   (for-each (lambda (p) (unless (ffi:null-pointer? p) (bs-keep-alive! obj p)))
+                             (list slot-name ...))
+                   obj))))))
     (define (message->procedure-code request iname index type)
       (assert (and (message? request)
                    (eq? (message-type request)
