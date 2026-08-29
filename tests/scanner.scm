@@ -3,6 +3,10 @@
   #:use-module (wayland client protocol wayland)
   #:use-module (wayland scanner)
   #:use-module (wayland list)
+  #:use-module (bytestructure-class)
+  #:use-module (bytestructures guile)
+  #:use-module (oop goops)
+  #:use-module ((system foreign) #:prefix ffi:)
   #:use-module (srfi srfi-64)
   #:use-module (srfi srfi-34)
   #:use-module (srfi srfi-35))
@@ -24,4 +28,24 @@
         (eval '(use-wayland-protocol ("idle.xml" #:type client)) m)
         (module-defined?
          m
-         '%org-kde-kwin-idle-struct)))))
+         '%org-kde-kwin-idle-struct))))
+
+  (test-assert "client event object uses its declared interface"
+    (let* ((called? #f)
+           (listener
+            (make <wl-surface-listener>
+              #:enter
+              (lambda (data surface output)
+                (set! called?
+                      (and (wl-surface? surface)
+                           (wl-output? output)
+                           (= (ffi:pointer-address (unwrap-wl-surface surface)) 1)
+                           (= (ffi:pointer-address (unwrap-wl-output output)) 2))))))
+           (enter-address
+            (bytestructure-ref (get-bytestructure listener) 'enter))
+           (enter
+            (ffi:pointer->procedure ffi:void
+                                    (ffi:make-pointer enter-address)
+                                    (list '* '* '*))))
+      (enter ffi:%null-pointer (ffi:make-pointer 1) (ffi:make-pointer 2))
+      called?)))

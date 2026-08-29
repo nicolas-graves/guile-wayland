@@ -341,7 +341,9 @@
                                                        ((equal? atype "string")
                                                         #`((ffi:pointer->string name*)))
                                                        ((equal? atype "object")
-                                                        #`((#,(->syntax (make-%wrap-name iname))
+                                                        #`((#,(->syntax
+                                                               (make-%wrap-name
+                                                                (or itype iname)))
                                                             name*)))
                                                        ((equal? atype "array")
                                                         #`((wrap-wl-array name*)))))))
