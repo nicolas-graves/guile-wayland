@@ -50,6 +50,7 @@
   (call-with-input-file file (cut xml->sxml <> #:trim-whitespace? #t)))
 (define -->_ (cut string-map (lambda (a) (if (char=? a #\-) #\_ a)) <>))
 (define _->- (cut string-map (lambda (a) (if (char=? a #\_) #\- a)) <>))
+(define %listener-callback-roots (make-weak-key-hash-table))
 (define string->keyword (compose symbol->keyword string->symbol))
 (define* (make-%interface-name name #:key (string? #f))
   ((compose (if string? identity string->symbol))
@@ -388,6 +389,11 @@
                      (for-each (lambda (callback)
                                  (bs-keep-alive! obj callback))
                                callbacks)
+                     ;; Keep the generated Scheme closures and their libffi
+                     ;; trampoline pointers reachable while the listener is
+                     ;; live.  The bytestructure keep-alive slot alone is not
+                     ;; sufficient across a collection during active dispatch.
+                     (hashq-set! %listener-callback-roots obj callbacks)
                      result)))))))
     (define (message->procedure-code request iname index type)
       (assert (and (message? request)
