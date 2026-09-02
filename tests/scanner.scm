@@ -48,4 +48,29 @@
                                     (ffi:make-pointer enter-address)
                                     (list '* '* '*))))
       (enter ffi:%null-pointer (ffi:make-pointer 1) (ffi:make-pointer 2))
-      called?)))
+      called?))
+
+  (test-assert "generated listener callback survives forced GC"
+    (let ((called? #f))
+      (define (make-listener-and-entry-point)
+        (let* ((listener
+                (make <wl-surface-listener>
+                  #:enter
+                  (lambda (data surface output)
+                    (set! called?
+                          (and (wl-surface? surface)
+                               (wl-output? output))))))
+               (enter-address
+                (bytestructure-ref (get-bytestructure listener) 'enter)))
+          (values listener
+                  (ffi:pointer->procedure ffi:void
+                                          (ffi:make-pointer enter-address)
+                                          (list '* '* '*)))))
+      (call-with-values make-listener-and-entry-point
+        (lambda (listener enter)
+          ;; At this point the constructor's callback procedure and native
+          ;; trampoline pointer are reachable only through LISTENER.
+          (gc)
+          (gc)
+          (enter ffi:%null-pointer (ffi:make-pointer 1) (ffi:make-pointer 2))
+          (and listener called?))))))
