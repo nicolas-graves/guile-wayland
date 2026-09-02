@@ -37,6 +37,9 @@
             wl-display-disconnect
             wl-display-get-fd
             wl-display-dispatch
+            wl-display-dispatch-pending
+            wl-display-prepare-read
+            wl-display-cancel-read
             wl-display-roundtrip
 
 
@@ -68,6 +71,18 @@
 
 (define-wl-client-procedure (wl-display-dispatch display)
   (ffi:int "wl_display_dispatch" '(*))
+  (% (unwrap-wl-display display)))
+
+(define-wl-client-procedure (wl-display-dispatch-pending display)
+  (ffi:int "wl_display_dispatch_pending" '(*))
+  (% (unwrap-wl-display display)))
+
+(define-wl-client-procedure (wl-display-prepare-read display)
+  (ffi:int "wl_display_prepare_read" '(*))
+  (% (unwrap-wl-display display)))
+
+(define-wl-client-procedure (wl-display-cancel-read display)
+  (void "wl_display_cancel_read" '(*))
   (% (unwrap-wl-display display)))
 
 (define-wl-client-procedure (wl-display-roundtrip display)
